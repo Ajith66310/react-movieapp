@@ -1,4 +1,4 @@
-const API_KEY = "HiyyYPr2uoOdpEYI2z94fTk5KKybVFBcFA2QB457";
+const API_KEY = "";
 const BASE_URL = "https://api.watchmode.com/v1";
 
 
