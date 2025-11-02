@@ -1,5 +1,11 @@
+<<<<<<< HEAD
 export const BASE_URL = import.meta.env.VITE_BASE_URL;
 const API_KEY = import.meta.env.VITE_API_KEY;
+=======
+const API_KEY = "";
+const BASE_URL = "https://api.watchmode.com/v1";
+
+>>>>>>> 9ac89067579954a004c5420da03ee604149d2ee9
 
 // Fetch popular movies and include their poster URLs
 export const getPopularMovies = async () => {
