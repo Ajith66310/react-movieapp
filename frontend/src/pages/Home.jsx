@@ -1,19 +1,53 @@
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import Card from "../components/Card";
+import { searchMovies, getPopularMovies } from "../services/api.js";
 
 const Home = () => {
-  const [serachQuery, setSerachQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [movies, setMovies] = useState([]);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const movies = [
-    { id: 1, title: "Good Bad Ugly", release_date: "2004" },
-    { id: 2, title: "John Wick", release_date: "2005" },
-    { id: 3, title: "Avatar", release_date: "2006" },
-    { id: 4, title: "Lucifer", release_date: "2007" },
-  ];
+  // Load popular movies initially
+  useEffect(() => {
+    const loadPopularMovies = async () => {
+      try {
+        const popularMovies = await getPopularMovies();
+        setMovies(popularMovies);
+      } catch (error) {
+        setError("Failed to load movies");
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadPopularMovies();
+  }, []);
 
-  const handleSearch = (e) => {
+  // Handle search
+  const handleSearch = async (e) => {
     e.preventDefault();
-    alert(serachQuery);
+
+    // If search is empty → reload popular movies
+    if (!searchQuery.trim()) {
+      setLoading(true);
+      const popularMovies = await getPopularMovies();
+      setMovies(popularMovies);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const results = await searchMovies(searchQuery);
+      setMovies(results);
+      setError(results.length === 0 ? "No movies found." : null);
+    } catch (error) {
+      setError("Search failed. Please try again.");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -26,8 +60,8 @@ const Home = () => {
         <input
           type="text"
           placeholder="Search for movies..."
-          value={serachQuery}
-          onChange={(e) => setSerachQuery(e.target.value)}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           className="w-[70%] md:w-1/2 px-4 py-3 rounded-lg bg-gray-900 text-gray-200 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-red-600"
         />
         <button
@@ -38,12 +72,14 @@ const Home = () => {
         </button>
       </form>
 
+      {/* Loading & Error States */}
+      {loading && <p className="text-center text-gray-400">Loading...</p>}
+      {error && <p className="text-center text-red-500">{error}</p>}
 
       {/* Movie Grid */}
       <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        {movies.map((movie) => (
-          <Card movie={movie} key={movie.id} />
-        ))}
+        {!loading &&
+          movies.map((movie) => <Card movie={movie} key={movie.id} />)}
       </div>
     </div>
   );
