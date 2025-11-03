@@ -40,7 +40,7 @@ const Card = ({ movie }) => {
         <img
           src={image}
           alt={movie?.title || movie?.name || "Movie Poster"}
-          className="w-full h-[350px] object-cover transition-transform duration-500 group-hover:scale-110"
+          className="w-full h-[350px] lg:h-[470px] object-cover transition-transform duration-500 group-hover:scale-110"
         />
 
         {/* Like Button */}
@@ -48,7 +48,7 @@ const Card = ({ movie }) => {
           onClick={handleLike}
           className="absolute top-3 right-3 flex items-center justify-center w-10 h-10
                      border-2 border-white text-white rounded-full 
-                     bg-black/40 backdrop-blur-sm  hover:border-red-600
+                     bg-black/40 backdrop-blur-sm hover:border-red-600
                      transition-all duration-300"
         >
           {liked ? (
