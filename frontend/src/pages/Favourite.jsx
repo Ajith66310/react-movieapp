@@ -1,28 +1,28 @@
 import React from "react";
+import Card from "../components/Card";
+import { useMovieContext } from "../contexts/MovieContext";
 
 const Favourite = () => {
+  const { favourites } = useMovieContext();
+
   return (
-    <div className=" flex flex-col items-center justify-center bg-black text-white px-6 pt-28">
-      <div className="text-center">
-        <h2 className="text-3xl md:text-4xl font-bold text-red-600 mb-4">
-          Your Favourites ❤️
-        </h2>
-
-        <div className="bg-gray-900 pt-10 rounded-2xl shadow-lg border border-gray-800">
-          <h3 className="text-lg text-gray-400 font-medium">
-            No favourite movies yet
-          </h3>
-          <p className="text-sm text-red-500 mt-2">
-            Start adding movies to your favourites by clicking the 🤍 icon.
-          </p>
+    <div className="bg-black min-h-screen pt-24 px-4">
+      {favourites && favourites.length > 0 ? (
+        <div
+          className="grid gap-6 
+                     grid-cols-2 sm:grid-cols-2 
+                     md:grid-cols-3 lg:grid-cols-4 
+                     p-4 sm:p-10"
+        >
+          {favourites.map((movie) => (
+            <Card movie={movie} key={movie.id || movie.title} />
+          ))}
         </div>
-
-        <div className="mt-8">
-          <button className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition">
-            Browse Movies
-          </button>
+      ) : (
+        <div className="flex items-center justify-center text-white text-xl mt-20">
+          <h3>No favourite movies...</h3>
         </div>
-      </div>
+      )}
     </div>
   );
 };

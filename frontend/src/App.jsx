@@ -2,10 +2,10 @@ import Navbar from "./components/Navbar";
 import Favourite from "./pages/Favourite";
 import Home from "./pages/Home";
 import { Route, Routes } from "react-router-dom";
-
+import { MovieProvider } from "./contexts/MovieContext";
 function App() {
   return (
-    <>
+    <MovieProvider>
       <Navbar />
 
       {/* Add enough top padding so content isn't hidden behind navbar */}
@@ -15,7 +15,7 @@ function App() {
           <Route path="/favourite" element={<Favourite />} />
         </Routes>
       </main>
-    </>
+    </MovieProvider>
   );
 }
 

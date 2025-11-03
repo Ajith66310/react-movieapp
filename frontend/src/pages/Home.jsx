@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Card from "../components/Card";
 import { searchMovies, getPopularMovies } from "../services/api.js";
+import CardSkeleton from "../components/CardSkeleton";
 
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -13,45 +14,43 @@ const Home = () => {
     const loadPopularMovies = async () => {
       try {
         const popularMovies = await getPopularMovies();
-        setMovies(popularMovies);
-      } catch (error) {
-        setError("Failed to load movies");
-        console.error(error);
+        setMovies(popularMovies || []);
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load movies.");
       } finally {
         setLoading(false);
       }
     };
+
     loadPopularMovies();
   }, []);
 
   // Handle search
   const handleSearch = async (e) => {
     e.preventDefault();
-
-    // If search is empty → reload popular movies
-    if (!searchQuery.trim()) {
-      setLoading(true);
-      const popularMovies = await getPopularMovies();
-      setMovies(popularMovies);
-      setLoading(false);
-      return;
-    }
-
+    setError(null);
     setLoading(true);
+
     try {
-      const results = await searchMovies(searchQuery);
-      setMovies(results);
-      setError(results.length === 0 ? "No movies found." : null);
-    } catch (error) {
+      if (!searchQuery.trim()) {
+        const popularMovies = await getPopularMovies();
+        setMovies(popularMovies || []);
+      } else {
+        const results = await searchMovies(searchQuery);
+        setMovies(results || []);
+        if (!results || results.length === 0) setError("No movies found.");
+      }
+    } catch (err) {
+      console.error(err);
       setError("Search failed. Please try again.");
-      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-black text-white px-4 md:px-10 py-10 pt-28">
+    <div className="min-h-screen bg-black text-white px-4 md:px-10 pt-28">
       {/* Search Bar */}
       <form
         onSubmit={handleSearch}
@@ -73,14 +72,31 @@ const Home = () => {
       </form>
 
       {/* Loading & Error States */}
-      {loading && <p className="text-center text-gray-400">Loading...</p>}
-      {error && <p className="text-center text-red-500">{error}</p>}
-
-      {/* Movie Grid */}
-      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        {!loading &&
-          movies.map((movie) => <Card movie={movie} key={movie.id} />)}
-      </div>
+      {loading ? (
+        <div
+          className="grid gap-6 
+                     grid-cols-2 sm:grid-cols-2 
+                     md:grid-cols-3 lg:grid-cols-4 
+                     p-2 sm:p-4"
+        >
+          {Array.from({ length: 8 }).map((_, index) => (
+            <CardSkeleton key={index} />
+          ))}
+        </div>
+      ) : error ? (
+        <p className="text-center text-red-500">{error}</p>
+      ) : (
+        <div
+          className="grid gap-6 
+                     grid-cols-2 sm:grid-cols-2 
+                     md:grid-cols-3 lg:grid-cols-4 
+                     p-2 sm:p-4"
+        >
+          {movies.map((movie) => (
+            <Card movie={movie} key={movie.id || movie.title} />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
