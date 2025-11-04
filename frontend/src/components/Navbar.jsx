@@ -16,7 +16,7 @@ const Navbar = () => {
           to="/"
           className="text-3xl font-bold tracking-wide text-red-600 font-['Playfair Display']"
         >
-          KNOIT
+          KNOIT.AI
         </Link>
 
         {/* Desktop Menu */}
