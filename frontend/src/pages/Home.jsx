@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import Card from "../components/Card";
-// import { searchMovies, getPopularMovies } from "../services/api.js";
 import CardSkeleton from "../components/CardSkeleton";
-import axios from 'axios'
-
+import axios from "axios";
 
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -13,10 +11,10 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [isSearchTriggered, setIsSearchTriggered] = useState(false);
 
-  //Backend base URL (update if needed)
+  // ✅ Backend base URL (change if needed)
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
-  // 🔹 Load popular movies when page loads
+  // 🔹 Load popular movies when the page loads
   useEffect(() => {
     const fetchPopularMovies = async () => {
       try {
@@ -33,7 +31,7 @@ const Home = () => {
     fetchPopularMovies();
   }, []);
 
-  // 🔹 Handle search and get AI data
+  // 🔹 Handle search and get AI data from backend
   const handleSearch = async (e) => {
     e.preventDefault();
     setError(null);
@@ -48,7 +46,7 @@ const Home = () => {
         setAiData({});
         setIsSearchTriggered(false);
       } else {
-        // Search → backend will also fetch AI info
+        // Search → backend fetches movies + AI info
         const res = await axios.get(`${BACKEND_URL}/api/movies/search`, {
           params: { query: searchQuery },
         });
@@ -63,7 +61,6 @@ const Home = () => {
       setLoading(false);
     }
   };
-
 
   return (
     <div className="min-h-screen bg-black text-white px-4 md:px-10 pt-28">
