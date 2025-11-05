@@ -13,6 +13,7 @@
     "@fontsource/playfair-display": "^5.2.8",
     "@fontsource/poppins": "^5.2.7",
     "@tailwindcss/vite": "^4.1.16",
+    "axios": "^1.13.2",
     "dotenv": "^17.2.3",
     "openai": "^6.8.0",
     "react": "^19.1.1",

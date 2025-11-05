@@ -1,128 +1,69 @@
 import { useState, useEffect } from "react";
 import Card from "../components/Card";
-import { searchMovies, getPopularMovies } from "../services/api.js";
+// import { searchMovies, getPopularMovies } from "../services/api.js";
 import CardSkeleton from "../components/CardSkeleton";
-import OpenAI from "openai";
+import axios from 'axios'
 
-//  Initialize OpenAI client
-const client = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true,
-});
 
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [movies, setMovies] = useState([]);
+  const [aiData, setAiData] = useState({});
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [aiData, setAiData] = useState({});
-  const [isSearchTriggered, setIsSearchTriggered] = useState(false); //  Added flag
+  const [isSearchTriggered, setIsSearchTriggered] = useState(false);
 
-  //  Load popular movies initially
+  //Backend base URL (update if needed)
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+
+  // 🔹 Load popular movies when page loads
   useEffect(() => {
-    const loadPopularMovies = async () => {
+    const fetchPopularMovies = async () => {
       try {
-        const popularMovies = await getPopularMovies();
-        setMovies(popularMovies || []);
+        setLoading(true);
+        const res = await axios.get(`${BACKEND_URL}/api/movies/popular`);
+        setMovies(res.data || []);
       } catch (err) {
         console.error(err);
-        setError("Failed to load movies.");
+        setError("Failed to load popular movies.");
       } finally {
         setLoading(false);
       }
     };
-    loadPopularMovies();
+    fetchPopularMovies();
   }, []);
 
-  //  Search and AI description generation
+  // 🔹 Handle search and get AI data
   const handleSearch = async (e) => {
     e.preventDefault();
     setError(null);
-    setAiData({});
+    setIsSearchTriggered(true);
     setLoading(true);
-    setIsSearchTriggered(true); //  Mark that a search was performed
 
     try {
-      let results = [];
-
       if (!searchQuery.trim()) {
-        results = await getPopularMovies();
-        setIsSearchTriggered(false); //  Reset flag if search empty
+        // Empty search → load popular again
+        const res = await axios.get(`${BACKEND_URL}/api/movies/popular`);
+        setMovies(res.data || []);
+        setAiData({});
+        setIsSearchTriggered(false);
       } else {
-        results = await searchMovies(searchQuery);
-      }
-
-      setMovies(results || []);
-
-      if (results.length > 0 && searchQuery.trim()) {
-        // Generate AI info for up to first 12 movies
-        const aiMovies = results.slice(0, 12);
-
-        const aiResponses = await Promise.all(
-          aiMovies.map(async (movie) => {
-            const title = movie.title || movie.name;
-            try {
-              const response = await client.chat.completions.create({
-                model: "gpt-4o-mini",
-                messages: [
-                  {
-                    role: "user",
-                    content: `Return only valid JSON like {"description":"...", "rating":"..."} for the movie "${title}". Do not include any extra text.`,
-                  },
-                ],
-              });
-
-              let content = response.choices?.[0]?.message?.content?.trim() || "";
-              let parsed;
-
-              try {
-                content = content.replace(/```json|```/g, "").trim();
-
-                if (content.startsWith("{") && content.endsWith("}")) {
-                  parsed = JSON.parse(content);
-                } else {
-                  const descMatch = content.match(/"description"\s*:\s*"([^"]+)"/);
-                  const ratingMatch = content.match(/"rating"\s*:\s*"([^"]+)"/);
-
-                  parsed = {
-                    description: descMatch ? descMatch[1] : content,
-                    rating: ratingMatch ? ratingMatch[1] : "N/A",
-                  };
-                }
-              } catch {
-                parsed = {
-                  description: content || "No description available.",
-                  rating: "N/A",
-                };
-              }
-
-              return { id: movie.id, ...parsed };
-            } catch (err) {
-              console.warn("AI fetch error for", title, err);
-              return {
-                id: movie.id,
-                description: "No description available.",
-                rating: "N/A",
-              };
-            }
-          })
-        );
-
-        const dataObj = {};
-        aiResponses.forEach((info) => {
-          dataObj[info.id] = info;
+        // Search → backend will also fetch AI info
+        const res = await axios.get(`${BACKEND_URL}/api/movies/search`, {
+          params: { query: searchQuery },
         });
-        setAiData(dataObj);
-      } else if (!results.length) {
-        setError("No movies found.");
+        setMovies(res.data.movies || []);
+        setAiData(res.data.aiData || {});
+        if (!res.data.movies?.length) setError("No movies found.");
       }
     } catch (err) {
-      console.error("AI or search error:", err);
+      console.error("Search error:", err);
       setError("Search failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-black text-white px-4 md:px-10 pt-28">

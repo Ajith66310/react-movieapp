@@ -7,8 +7,6 @@ function App() {
   return (
     <MovieProvider>
       <Navbar />
-
-      {/* Add enough top padding so content isn't hidden behind navbar */}
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
