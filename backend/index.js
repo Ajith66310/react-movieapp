@@ -1,12 +1,21 @@
 import express from "express";
-import cors from "cors";
 import dotenv from "dotenv";
 import movieRoutes from "./routes/movieRoutes.js";
+import smartcors from "smartcors";
 
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+app.use(
+smartcors({
+    allowedOrigins:[],
+    allowCredentials: true,
+    debug: true
+  })
+);
+
+
 app.use(express.json());
 
 //  Movie routes
