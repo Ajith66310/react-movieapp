@@ -1,6 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
-import smartcors from "smartcors";
+import cors from "cors";
 import movieRoutes from "./routes/movieRoutes.js";
 import connectDB from "./config/db.js";
 
@@ -9,15 +9,11 @@ dotenv.config();
 const app = express();
 
 
+app.use(cors({
+  origin: ["https://react-movieapp-alpha.vercel.app"],
+  credentials: true, // allows cookies/auth headers
+}));
 
-
-app.use(
-  smartcors({
-    allowedOrigins: [ ],
-    allowCredentials: true,
-    debug: true,
-  })
-);
 
 
 app.use(express.json());
