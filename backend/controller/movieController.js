@@ -1,6 +1,7 @@
 import axios from "axios";
 import OpenAI from "openai";
 import dotenv from "dotenv";
+import UserUsage from "../model/userUsageModel.js";
 
 dotenv.config();
 
@@ -8,7 +9,6 @@ const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const BASE_URL = process.env.WATCHMODE_BASE_URL;
 const API_KEY = process.env.WATCHMODE_API_KEY;
 
-//  Get popular movies
 export const getPopularMovies = async (req, res) => {
   try {
     const { data } = await axios.get(`${BASE_URL}/list-titles/`, {
@@ -43,24 +43,38 @@ export const getPopularMovies = async (req, res) => {
   }
 };
 
-//  Search movies + AI-generated description/rating
 export const searchAiDescription = async (req, res) => {
-  const { query } = req.query;
+  const { query, userId } = req.query;
+
+  if (!userId) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
   if (!query) return res.status(400).json({ error: "Query required" });
 
+  let usage = await UserUsage.findOne({ userId });
+  if (!usage) usage = await UserUsage.create({ userId, aiSearchCount: 0 });
+
+  if (usage.aiSearchCount >= 2) {
+    return res.status(403).json({
+      error: "AI search limit reached (2 searches allowed for free users)",
+    });
+  }
+
   try {
-    //  Search movies by query
-    const { data } = await axios.get(`${BASE_URL}/autocomplete-search/`, {
+    // SEARCH MOVIE
+    const { data } = await axios.get(`${BASE_URL}/search/`, {
       params: {
         apiKey: API_KEY,
+        search_field: "name",
         search_value: query,
-        search_type: 2,
+        types: "movie",
       },
     });
 
-    const results = data.results || [];
+    const results = data.title_results || [];
 
-    //  Fetch detailed info for each movie
+    // GET DETAILS
     const detailedResults = await Promise.all(
       results.map(async (movie) => {
         try {
@@ -68,68 +82,64 @@ export const searchAiDescription = async (req, res) => {
             `${BASE_URL}/title/${movie.id}/details/`,
             { params: { apiKey: API_KEY } }
           );
-          return { ...movie, poster_url: detail.poster };
+
+          return {
+            ...movie,
+            title: movie.name,
+            poster_url: detail.poster || null,
+          };
         } catch {
           return movie;
         }
       })
     );
 
-    //  Generate AI descriptions for top 10 movies
-    const aiMovies = detailedResults.slice(0, 15);
+    const cleanedResults = detailedResults.filter(Boolean);
+
+    // AI DESCRIPTION
     const aiResponses = await Promise.all(
-      aiMovies.map(async (movie) => {
-        const title = movie.title || movie.name;
+      cleanedResults.slice(0, 15).map(async (movie) => {
         try {
           const completion = await client.chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
               {
                 role: "user",
-                content: `Return only valid JSON in this format for the movie "${title}":
+                content: `Return JSON for "${movie.title}":
 {
-  "description": "A short, engaging summary of the movie (2–3 sentences).",
-  "rating": "A numeric IMDb-style rating out of 10 (e.g., 7.8)"
-}
-Do NOT include content ratings like PG-13 or R.`,
+  "description": "2–3 sentence summary",
+  "rating": "0–10 rating"
+}`,
               },
             ],
           });
 
-          let content = completion.choices?.[0]?.message?.content?.trim() || "";
-          content = content.replace(/```json|```/g, "").trim();
+          let output = completion.choices[0].message.content.trim();
+          output = output.replace(/```json|```/g, "").trim();
 
           let parsed;
           try {
-            parsed = JSON.parse(content);
-
-            //  Sanitize non-numeric ratings (e.g., PG-13)
-            if (parsed.rating && !/^\d+(\.\d+)?$/.test(parsed.rating)) {
-              parsed.rating = "N/A";
-            }
+            parsed = JSON.parse(output);
           } catch {
-            parsed = { description: content, rating: "N/A" };
+            parsed = { description: output, rating: "N/A" };
           }
 
           return { id: movie.id, ...parsed };
         } catch {
-          return {
-            id: movie.id,
-            description: "No description available",
-            rating: "N/A",
-          };
+          return { id: movie.id, description: "N/A", rating: "N/A" };
         }
       })
     );
 
-    //  Combine AI data by movie ID
     const aiData = {};
-    aiResponses.forEach((info) => (aiData[info.id] = info));
+    aiResponses.forEach((x) => (aiData[x.id] = x));
 
-    //  Send final response
-    res.json({ movies: detailedResults, aiData });
+    usage.aiSearchCount++;
+    await usage.save();
+
+    res.json({ movies: cleanedResults, aiData });
   } catch (err) {
-    console.error("Search error:", err.message);
+    console.error("Search error:", err);
     res.status(500).json({ error: "Search failed" });
   }
 };

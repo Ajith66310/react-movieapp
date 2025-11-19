@@ -1,26 +1,32 @@
 import express from "express";
 import dotenv from "dotenv";
-import movieRoutes from "./routes/movieRoutes.js";
 import smartcors from "smartcors";
+import movieRoutes from "./routes/movieRoutes.js";
+import connectDB from "./config/db.js";
+
 
 dotenv.config();
-
 const app = express();
 
+
+
+
 app.use(
-smartcors({
-    allowedOrigins:[],
+  smartcors({
+    allowedOrigins: [ ],
     allowCredentials: true,
-    debug: true
+    debug: true,
   })
 );
 
 
 app.use(express.json());
 
-//  Movie routes
+
+await connectDB();
+
+
 app.use("/api/movies", movieRoutes);
 
-//  Server start
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(` Server running on port http://localhost:${PORT}`));
+
+app.listen(5000, () => console.log("Server running on http://localhost:5000"));

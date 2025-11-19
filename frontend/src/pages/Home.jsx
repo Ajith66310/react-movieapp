@@ -1,7 +1,10 @@
+import { useUser } from "@clerk/clerk-react";
 import { useState, useEffect } from "react";
 import Card from "../components/Card";
 import CardSkeleton from "../components/CardSkeleton";
 import axios from "axios";
+import toast from "react-hot-toast";
+
 
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -9,12 +12,12 @@ const Home = () => {
   const [aiData, setAiData] = useState({});
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { user } = useUser();
   const [isSearchTriggered, setIsSearchTriggered] = useState(false);
 
-  // ✅ Backend base URL (change if needed)
+
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
-  // 🔹 Load popular movies when the page loads
   useEffect(() => {
     const fetchPopularMovies = async () => {
       try {
@@ -31,40 +34,57 @@ const Home = () => {
     fetchPopularMovies();
   }, []);
 
-  // 🔹 Handle search and get AI data from backend
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    setError(null);
-    setIsSearchTriggered(true);
-    setLoading(true);
+const handleSearch = async (e) => {
+  e.preventDefault();
+  setError(null);
 
-    try {
-      if (!searchQuery.trim()) {
-        // Empty search → load popular again
-        const res = await axios.get(`${BACKEND_URL}/api/movies/popular`);
-        setMovies(res.data || []);
-        setAiData({});
-        setIsSearchTriggered(false);
-      } else {
-        // Search → backend fetches movies + AI info
-        const res = await axios.get(`${BACKEND_URL}/api/movies/search`, {
-          params: { query: searchQuery },
-        });
-        setMovies(res.data.movies || []);
-        setAiData(res.data.aiData || {});
-        if (!res.data.movies?.length) setError("No movies found.");
-      }
-    } catch (err) {
-      console.error("Search error:", err);
-      setError("Search failed. Please try again.");
-    } finally {
-      setLoading(false);
+  if (!user) {
+    toast.error("Please login to search movies.");
+    return;
+  }
+
+  if (!searchQuery.trim()) {
+    toast.error("Enter a movie name to search.");
+    return;
+  }
+
+  setIsSearchTriggered(true);
+  setLoading(true);
+
+  try {
+    const res = await axios.get(`${BACKEND_URL}/api/movies/search`, {
+      params: {
+        query: searchQuery,
+        userId: user.id,
+      },
+    });
+
+    setMovies(res.data.movies || []);
+    setAiData(res.data.aiData || {});
+    
+    if ((res.data.movies || []).length === 0) {
+      toast("No movies found.");
+    } else {
+      toast.success("Movies loaded!");
     }
-  };
+
+  } catch (err) {
+    console.error("Search error:", err);
+
+    // If backend sends a message we show it
+    if (err.response?.data?.error) {
+      toast.error(err.response.data.error);
+    } else {
+      toast.error("Something went wrong. Try again.");
+    }
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-black text-white px-4 md:px-10 pt-28">
-      {/* 🔍 Search Bar */}
       <form
         onSubmit={handleSearch}
         className="flex flex-row gap-3 justify-center items-center mb-10 flex-wrap"
@@ -84,7 +104,6 @@ const Home = () => {
         </button>
       </form>
 
-      {/* 🌀 Loading & Error States */}
       {loading ? (
         <div className="grid gap-6 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 p-2 sm:p-4">
           {Array.from({ length: 8 }).map((_, index) => (
@@ -104,7 +123,6 @@ const Home = () => {
               >
                 <Card movie={movie} />
 
-                {/* 🤖 Show AI Info ONLY after user searches */}
                 {isSearchTriggered && (
                   <div className="p-3 border-t border-gray-800 text-center">
                     <p className="text-gray-300 text-sm italic">
